@@ -36,7 +36,6 @@ pub enum ResolverError {
     NotInitialized = 5,
 }
 
-#[contractclient(name = "ResolverContractClient")]
 #[contract]
 pub struct ResolverContract;
 
@@ -203,13 +202,11 @@ fn registry_owner(
         Err(err) => return Err(err),
     };
 
-    let registry_entry = env
-        .invoke_contract::<RegistryEntry>(
-            &registry,
-            &Symbol::new(env, "resolve"),
-            (name.clone(), now_unix).into_val(env),
-        )
-        .map_err(|_| ResolverError::Unauthorized)?;
+    let registry_entry = env.invoke_contract::<RegistryEntry>(
+        &registry,
+        &Symbol::new(env, "resolve"),
+        (name.clone(), now_unix).into_val(env),
+    );
 
     Ok(Some(registry_entry.owner))
 }

@@ -376,7 +376,7 @@ impl XlmNsClient {
             .map_err(|e| SdkError::InvalidRequest(format!("failed to create RPC client: {}", e)))?;
 
         // Get current network information for transaction building
-        let network = rpc
+        let _network = rpc
             .get_network()
             .await
             .map_err(|e| SdkError::Transport(format!("failed to get network: {}", e)))?;
@@ -387,7 +387,7 @@ impl XlmNsClient {
             registrar_id,
             request.label,
             std::time::SystemTime::now()
-                .duration_since(std::timze::UNIX_EPOCH)
+                .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_nanos()
         );

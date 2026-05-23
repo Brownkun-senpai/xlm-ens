@@ -75,7 +75,7 @@ mod tests {
             &time.future(100),
         );
 
-        assert_eq!(result, Ok(Err(RegistryError::InvalidExpiry)));
+        assert!(matches!(result, Err(Ok(RegistryError::InvalidExpiry))));
     }
 
     #[test]
@@ -100,7 +100,7 @@ mod tests {
             &time.future(99),
         );
 
-        assert_eq!(result, Ok(Err(RegistryError::InvalidGracePeriod)));
+        assert!(matches!(result, Err(Ok(RegistryError::InvalidGracePeriod))));
     }
 
     #[test]
@@ -128,7 +128,10 @@ mod tests {
 
         let invalid_expiry =
             client.try_renew(&name, &owner, &time.past(1), &grace_ends_at, &time.now);
-        assert_eq!(invalid_expiry, Ok(Err(RegistryError::InvalidExpiry)));
+        assert!(matches!(
+            invalid_expiry,
+            Err(Ok(RegistryError::InvalidExpiry))
+        ));
 
         let invalid_grace_period = client.try_renew(
             &name,
@@ -137,10 +140,10 @@ mod tests {
             &time.future(149),
             &time.now,
         );
-        assert_eq!(
+        assert!(matches!(
             invalid_grace_period,
-            Ok(Err(RegistryError::InvalidGracePeriod))
-        );
+            Err(Ok(RegistryError::InvalidGracePeriod))
+        ));
     }
 
     #[test]
@@ -168,11 +171,17 @@ mod tests {
 
         let reduced_expiry =
             client.try_renew(&name, &owner, &time.future(50), &grace_ends_at, &time.now);
-        assert_eq!(reduced_expiry, Ok(Err(RegistryError::InvalidExpiry)));
+        assert!(matches!(
+            reduced_expiry,
+            Err(Ok(RegistryError::InvalidExpiry))
+        ));
 
         let reduced_grace =
             client.try_renew(&name, &owner, &expires_at, &time.future(150), &time.now);
-        assert_eq!(reduced_grace, Ok(Err(RegistryError::InvalidGracePeriod)));
+        assert!(matches!(
+            reduced_grace,
+            Err(Ok(RegistryError::InvalidGracePeriod))
+        ));
 
         let new_expires_at = time.future(200);
         let new_grace_ends_at = time.future(300);
@@ -211,10 +220,10 @@ mod tests {
         }));
 
         assert!(result.is_err(), "registration without auth should fail");
-        assert_eq!(
+        assert!(matches!(
             client.try_resolve(&name, &100),
-            Ok(Err(RegistryError::NotFound))
-        );
+            Err(Ok(RegistryError::NotFound))
+        ));
     }
 
     #[test]
@@ -275,7 +284,7 @@ mod tests {
         );
 
         let result = client.try_transfer(&name, &attacker, &next_owner, &time.future(10));
-        assert_eq!(result, Ok(Err(RegistryError::Unauthorized)));
+        assert!(matches!(result, Err(Ok(RegistryError::Unauthorized))));
     }
 
     #[test]
@@ -302,7 +311,7 @@ mod tests {
 
         let resolver = Some(String::from_str(&env, "resolver_address"));
         let result = client.try_set_resolver(&name, &attacker, &resolver, &time.future(10));
-        assert_eq!(result, Ok(Err(RegistryError::Unauthorized)));
+        assert!(matches!(result, Err(Ok(RegistryError::Unauthorized))));
     }
 
     #[test]
@@ -329,7 +338,7 @@ mod tests {
 
         let target = Some(String::from_str(&env, "target_address"));
         let result = client.try_set_target_address(&name, &attacker, &target, &time.future(10));
-        assert_eq!(result, Ok(Err(RegistryError::Unauthorized)));
+        assert!(matches!(result, Err(Ok(RegistryError::Unauthorized))));
     }
 
     #[test]
@@ -356,7 +365,7 @@ mod tests {
 
         let metadata = Some(String::from_str(&env, "ipfs://hash"));
         let result = client.try_set_metadata(&name, &attacker, &metadata, &time.future(10));
-        assert_eq!(result, Ok(Err(RegistryError::Unauthorized)));
+        assert!(matches!(result, Err(Ok(RegistryError::Unauthorized))));
     }
 
     #[test]
@@ -388,7 +397,7 @@ mod tests {
             &time.future(2500),
             &time.future(10),
         );
-        assert_eq!(result, Ok(Err(RegistryError::Unauthorized)));
+        assert!(matches!(result, Err(Ok(RegistryError::Unauthorized))));
     }
 
     #[test]
