@@ -8,6 +8,8 @@
     [],
     [],
     [],
+    [],
+    [],
     []
   ],
   "ledger": {
@@ -30,7 +32,38 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Forward"
+                    "symbol": "OwnerSubdomains"
+                  },
+                  {
+                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "vec": [
+                  {
+                    "string": "pay.timmy.xlm"
+                  }
+                ]
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 4095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "Parent"
                   },
                   {
                     "string": "timmy.xlm"
@@ -42,10 +75,10 @@
                 "map": [
                   {
                     "key": {
-                      "symbol": "address"
+                      "symbol": "controllers"
                     },
                     "val": {
-                      "string": "GABC"
+                      "vec": []
                     }
                   },
                   {
@@ -54,22 +87,6 @@
                     },
                     "val": {
                       "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
-                    }
-                  },
-                  {
-                    "key": {
-                      "symbol": "text_records"
-                    },
-                    "val": {
-                      "map": []
-                    }
-                  },
-                  {
-                    "key": {
-                      "symbol": "updated_at"
-                    },
-                    "val": {
-                      "u64": "100"
                     }
                   }
                 ]
@@ -90,16 +107,20 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Reverse"
+                    "symbol": "ParentSubdomains"
                   },
                   {
-                    "string": "GABC"
+                    "string": "timmy.xlm"
                   }
                 ]
               },
               "durability": "persistent",
               "val": {
-                "string": "timmy.xlm"
+                "vec": [
+                  {
+                    "string": "pay.timmy.xlm"
+                  }
+                ]
               }
             }
           },

@@ -1,10 +1,11 @@
 {
   "generators": {
-    "address": 3,
+    "address": 2,
     "nonce": 0,
     "mux_id": 0
   },
   "auth": [
+    [],
     [],
     [],
     [],
@@ -45,7 +46,7 @@
                       "symbol": "address"
                     },
                     "val": {
-                      "string": "GABC"
+                      "string": "GDEF"
                     }
                   },
                   {
@@ -61,7 +62,16 @@
                       "symbol": "text_records"
                     },
                     "val": {
-                      "map": []
+                      "map": [
+                        {
+                          "key": {
+                            "string": "com.twitter"
+                          },
+                          "val": {
+                            "string": "@timmy"
+                          }
+                        }
+                      ]
                     }
                   },
                   {
@@ -69,7 +79,7 @@
                       "symbol": "updated_at"
                     },
                     "val": {
-                      "u64": "100"
+                      "u64": "102"
                     }
                   }
                 ]
@@ -94,6 +104,33 @@
                   },
                   {
                     "string": "GABC"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "string": "timmy.xlm"
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 4095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "Reverse"
+                  },
+                  {
+                    "string": "GDEF"
                   }
                 ]
               },

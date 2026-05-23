@@ -1,10 +1,13 @@
 {
   "generators": {
-    "address": 2,
+    "address": 5,
     "nonce": 0,
     "mux_id": 0
   },
   "auth": [
+    [],
+    [],
+    [],
     [],
     [],
     [],
@@ -32,7 +35,65 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Forward"
+                    "symbol": "OwnerSubdomains"
+                  },
+                  {
+                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "vec": []
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 4095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "OwnerSubdomains"
+                  },
+                  {
+                    "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                  }
+                ]
+              },
+              "durability": "persistent",
+              "val": {
+                "vec": [
+                  {
+                    "string": "pay.timmy.xlm"
+                  }
+                ]
+              }
+            }
+          },
+          "ext": "v0"
+        },
+        "live_until": 4095
+      },
+      {
+        "entry": {
+          "last_modified_ledger_seq": 0,
+          "data": {
+            "contract_data": {
+              "ext": "v0",
+              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
+              "key": {
+                "vec": [
+                  {
+                    "symbol": "Parent"
                   },
                   {
                     "string": "timmy.xlm"
@@ -44,10 +105,10 @@
                 "map": [
                   {
                     "key": {
-                      "symbol": "address"
+                      "symbol": "controllers"
                     },
                     "val": {
-                      "string": "GABC"
+                      "vec": []
                     }
                   },
                   {
@@ -57,31 +118,6 @@
                     "val": {
                       "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
                     }
-                  },
-                  {
-                    "key": {
-                      "symbol": "text_records"
-                    },
-                    "val": {
-                      "map": [
-                        {
-                          "key": {
-                            "string": "com.twitter"
-                          },
-                          "val": {
-                            "string": "@timmy"
-                          }
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "key": {
-                      "symbol": "updated_at"
-                    },
-                    "val": {
-                      "u64": "101"
-                    }
                   }
                 ]
               }
@@ -101,16 +137,20 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Primary"
+                    "symbol": "ParentSubdomains"
                   },
                   {
-                    "string": "GABC"
+                    "string": "timmy.xlm"
                   }
                 ]
               },
               "durability": "persistent",
               "val": {
-                "string": "timmy.xlm"
+                "vec": [
+                  {
+                    "string": "pay.timmy.xlm"
+                  }
+                ]
               }
             }
           },
@@ -128,16 +168,41 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "Reverse"
+                    "symbol": "Subdomain"
                   },
                   {
-                    "string": "GABC"
+                    "string": "pay.timmy.xlm"
                   }
                 ]
               },
               "durability": "persistent",
               "val": {
-                "string": "timmy.xlm"
+                "map": [
+                  {
+                    "key": {
+                      "symbol": "created_at"
+                    },
+                    "val": {
+                      "u64": "100"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "owner"
+                    },
+                    "val": {
+                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                    }
+                  },
+                  {
+                    "key": {
+                      "symbol": "parent"
+                    },
+                    "val": {
+                      "string": "timmy.xlm"
+                    }
+                  }
+                ]
               }
             }
           },
