@@ -216,6 +216,170 @@ mod tests {
         );
     }
 
+    /// Walk both enumeration surfaces (global `token_by_index` and per-owner
+    /// `token_of_owner_by_index`) and assert the four invariants that have to
+    /// hold simultaneously for the NFT to be consistent:
+    ///
+    /// 1. `total_supply` equals the number of entries reachable through
+    ///    `token_by_index` (the global list is dense and bounded).
+    /// 2. Every globally-enumerated token resolves through `owner_of` to a
+    ///    real owner.
+    /// 3. For every owner, the tokens reachable through
+    ///    `token_of_owner_by_index` are exactly the tokens whose `owner_of`
+    ///    points back at that owner (per-owner list is in sync with the
+    ///    canonical owner field).
+    /// 4. No owner list contains the same token twice.
+    fn assert_enumeration_consistent(client: &NftContractClient<'_>, owners: &[Address]) {
+        let total = client.total_supply();
+
+        let mut global_tokens: std::vec::Vec<String> = std::vec::Vec::new();
+        for i in 0..total {
+            let token = client
+                .token_by_index(&i)
+                .unwrap_or_else(|| panic!("token_by_index({}) missing inside total_supply", i));
+            global_tokens.push(token);
+        }
+        // Global list is dense: nothing beyond total_supply.
+        assert!(client.token_by_index(&total).is_none());
+
+        // Every globally-listed token has an owner.
+        for token in &global_tokens {
+            assert!(
+                client.owner_of(token).is_some(),
+                "globally-enumerated token has no owner"
+            );
+        }
+
+        for owner in owners {
+            let balance = client.balance_of(owner);
+
+            let mut per_owner: std::vec::Vec<String> = std::vec::Vec::new();
+            for i in 0..balance {
+                let token = client
+                    .token_of_owner_by_index(owner, &i)
+                    .unwrap_or_else(|| {
+                        panic!("token_of_owner_by_index({}) missing inside balance_of", i)
+                    });
+                per_owner.push(token);
+            }
+            assert!(client.token_of_owner_by_index(owner, &balance).is_none());
+
+            // Per-owner list matches owner_of: every entry resolves back, and
+            // every token whose owner is this address shows up exactly once.
+            for token in &per_owner {
+                assert_eq!(
+                    client.owner_of(token).as_ref(),
+                    Some(owner),
+                    "owner list contains a token whose owner_of disagrees"
+                );
+            }
+            let owned_via_global: std::vec::Vec<&String> = global_tokens
+                .iter()
+                .filter(|t| client.owner_of(t).as_ref() == Some(owner))
+                .collect();
+            assert_eq!(
+                owned_via_global.len() as u32,
+                balance,
+                "balance_of disagrees with the count of tokens whose owner_of points here"
+            );
+
+            // No duplicate owner-token entries.
+            let mut seen: std::vec::Vec<&String> = std::vec::Vec::new();
+            for token in &per_owner {
+                assert!(
+                    !seen.contains(&token),
+                    "duplicate owner-token entry detected"
+                );
+                seen.push(token);
+            }
+        }
+    }
+
+    #[test]
+    fn invariants_hold_after_mint_approve_transfer_sequence() {
+        let env = Env::default();
+        let contract_id = env.register(NftContract, ());
+        let client = NftContractClient::new(&env, &contract_id);
+
+        let alice = Address::generate(&env);
+        let bob = Address::generate(&env);
+        let carol = Address::generate(&env);
+        let owners = [alice.clone(), bob.clone(), carol.clone()];
+
+        let alpha = String::from_str(&env, "alpha.xlm");
+        let beta = String::from_str(&env, "beta.xlm");
+        let gamma = String::from_str(&env, "gamma.xlm");
+
+        client.mint(&alpha, &alice, &None::<String>);
+        client.mint(&beta, &alice, &None::<String>);
+        client.mint(&gamma, &bob, &None::<String>);
+        assert_enumeration_consistent(&client, &owners);
+
+        // Direct owner transfer.
+        client.transfer(&alpha, &alice, &bob);
+        assert_enumeration_consistent(&client, &owners);
+
+        // Approval then approved-transfer must not double-list or lose tokens.
+        client.approve(&beta, &alice, &carol);
+        client.transfer(&beta, &carol, &carol);
+        assert_enumeration_consistent(&client, &owners);
+
+        // Re-mint must not allow the second mint of the same id (covered
+        // elsewhere) and must leave invariants intact.
+        let delta = String::from_str(&env, "delta.xlm");
+        client.mint(
+            &delta,
+            &alice,
+            &Some(String::from_str(&env, "ipfs://delta")),
+        );
+        assert_enumeration_consistent(&client, &owners);
+
+        // Transfer back to the original owner.
+        client.transfer(&alpha, &bob, &alice);
+        assert_enumeration_consistent(&client, &owners);
+    }
+
+    #[test]
+    fn no_op_transfer_to_same_owner_is_idempotent_and_keeps_invariants() {
+        let env = Env::default();
+        let contract_id = env.register(NftContract, ());
+        let client = NftContractClient::new(&env, &contract_id);
+
+        let alice = Address::generate(&env);
+        let bob = Address::generate(&env);
+        let owners = [alice.clone(), bob.clone()];
+
+        let alpha = String::from_str(&env, "alpha.xlm");
+        let beta = String::from_str(&env, "beta.xlm");
+
+        client.mint(&alpha, &alice, &None::<String>);
+        client.mint(&beta, &bob, &None::<String>);
+
+        let alice_balance_before = client.balance_of(&alice);
+        let supply_before = client.total_supply();
+        let token_before = client.token(&alpha).unwrap();
+
+        // Set then clear an approval and transfer alice -> alice. The
+        // approved field must be cleared, balances unchanged, and the
+        // per-owner list must contain alpha exactly once.
+        let carol = Address::generate(&env);
+        client.approve(&alpha, &alice, &carol);
+        client.transfer(&alpha, &alice, &alice);
+
+        assert_eq!(client.owner_of(&alpha), Some(alice.clone()));
+        assert_eq!(client.balance_of(&alice), alice_balance_before);
+        assert_eq!(client.total_supply(), supply_before);
+
+        let token_after = client.token(&alpha).unwrap();
+        assert_eq!(token_after.owner, token_before.owner);
+        assert_eq!(token_after.approved, None);
+
+        // Run the full consistency walk — duplicate detection in particular
+        // would catch a self-transfer that pushed alpha onto alice's list a
+        // second time.
+        assert_enumeration_consistent(&client, &owners);
+    }
+
     #[test]
     fn approval_changes_do_not_change_enumeration_queries() {
         let env = Env::default();
