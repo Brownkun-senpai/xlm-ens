@@ -12,11 +12,14 @@ pub enum OutputFormat {
 pub fn emit(format: OutputFormat, human: &str, json: Value) {
     match format {
         OutputFormat::Human => println!("{human}"),
-        OutputFormat::Json | OutputFormat::Csv => {
+        OutputFormat::Json => {
             println!(
                 "{}",
                 serde_json::to_string_pretty(&json).expect("json output should always serialize")
             );
+        }
+        OutputFormat::Csv => {
+            emit_csv(&json, &mut std::io::stdout());
         }
     }
 }
@@ -24,12 +27,30 @@ pub fn emit(format: OutputFormat, human: &str, json: Value) {
 pub fn emit_error(format: OutputFormat, human: &str, json: Value) {
     match format {
         OutputFormat::Human => eprintln!("{human}"),
-        OutputFormat::Json | OutputFormat::Csv => {
+        OutputFormat::Json => {
             eprintln!(
                 "{}",
                 serde_json::to_string_pretty(&json).expect("json output should always serialize")
             );
         }
+        OutputFormat::Csv => {
+            emit_csv(&json, &mut std::io::stderr());
+        }
+    }
+}
+
+fn emit_csv(json: &Value, writer: &mut dyn std::io::Write) {
+    if let Value::Object(map) = json {
+        let keys: Vec<&str> = map.keys().map(|k| k.as_str()).collect();
+        let values: Vec<String> = map
+            .values()
+            .map(|v| match v {
+                Value::String(s) => s.clone(),
+                other => other.to_string(),
+            })
+            .collect();
+        let _ = writeln!(writer, "{}", keys.join(","));
+        let _ = writeln!(writer, "{}", values.join(","));
     }
 }
 

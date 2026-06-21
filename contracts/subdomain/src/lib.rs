@@ -234,6 +234,9 @@ impl SubdomainContract {
             return Err(SubdomainError::Unauthorized);
         }
 
+        remove_parent_subdomain(&env, &record.parent, &fqdn);
+        remove_owner_subdomain(&env, &record.owner, &fqdn);
+
         env.events().publish(
             (symbol_short!("subdomain"), symbol_short!("revoked")),
             (fqdn.clone(), caller),

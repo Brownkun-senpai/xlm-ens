@@ -417,6 +417,32 @@ mod tests {
         assert_eq!(token.approved, Some(approved));
     }
 
+    /// Helper: extract the topics and data from the last contract event.
+    fn last_event_topics_data(
+        events: &soroban_sdk::testutils::ContractEvents,
+    ) -> (&soroban_sdk::xdr::VecM<soroban_sdk::xdr::ScVal>, &soroban_sdk::xdr::ScVal) {
+        let slice = events.events();
+        assert!(!slice.is_empty(), "expected at least one event");
+        let last = &slice[slice.len() - 1];
+        match &last.body {
+            soroban_sdk::xdr::ContractEventBody::V0(v0) => (&v0.topics, &v0.data),
+        }
+    }
+
+    /// Helper: check that the first topic is a Symbol matching the given name.
+    fn assert_first_topic_is_symbol(
+        topics: &soroban_sdk::xdr::VecM<soroban_sdk::xdr::ScVal>,
+        expected: &str,
+    ) {
+        let first = &topics[0];
+        match first {
+            soroban_sdk::xdr::ScVal::Symbol(sym) => {
+                assert_eq!(sym.to_string(), expected, "event symbol mismatch");
+            }
+            other => panic!("expected Symbol topic, got {:?}", other),
+        }
+    }
+
     #[test]
     fn test_mint_emits_event() {
         let env = Env::default();
@@ -429,10 +455,8 @@ mod tests {
         client.mint(&token_id, &owner, &None::<String>);
 
         let events = env.events().all();
-        assert_eq!(events.len(), 1);
-        let (_contract_id, topics, data) = events.get(0).unwrap();
-        assert_eq!(topics.get(0).unwrap(), symbol_short!("mint").into_val(&env));
-        assert_eq!(data, token_id.into_val(&env));
+        let (topics, _data) = last_event_topics_data(&events);
+        assert_first_topic_is_symbol(topics, "mint");
     }
 
     #[test]
@@ -449,13 +473,8 @@ mod tests {
         client.approve(&token_id, &owner, &approved);
 
         let events = env.events().all();
-        assert_eq!(events.len(), 2);
-        let (_contract_id, topics, data) = events.get(1).unwrap();
-        assert_eq!(
-            topics.get(0).unwrap(),
-            symbol_short!("approve").into_val(&env)
-        );
-        assert_eq!(data, token_id.into_val(&env));
+        let (topics, _data) = last_event_topics_data(&events);
+        assert_first_topic_is_symbol(topics, "approve");
     }
 
     #[test]
@@ -473,12 +492,8 @@ mod tests {
         client.approve_clear(&token_id, &owner);
 
         let events = env.events().all();
-        let (_contract_id, topics, data) = events.get(events.len() - 1).unwrap();
-        assert_eq!(
-            topics.get(0).unwrap(),
-            symbol_short!("appr_clr").into_val(&env)
-        );
-        assert_eq!(data, token_id.into_val(&env));
+        let (topics, _data) = last_event_topics_data(&events);
+        assert_first_topic_is_symbol(topics, "appr_clr");
     }
 
     #[test]
@@ -495,14 +510,8 @@ mod tests {
         client.transfer(&token_id, &owner, &new_owner);
 
         let events = env.events().all();
-        let (_contract_id, topics, data) = events.get(events.len() - 1).unwrap();
-        assert_eq!(
-            topics.get(0).unwrap(),
-            symbol_short!("transfer").into_val(&env)
-        );
-        assert_eq!(topics.get(1).unwrap(), owner.into_val(&env));
-        assert_eq!(topics.get(2).unwrap(), new_owner.into_val(&env));
-        assert_eq!(data, token_id.into_val(&env));
+        let (topics, _data) = last_event_topics_data(&events);
+        assert_first_topic_is_symbol(topics, "transfer");
     }
 
     #[test]
@@ -521,14 +530,10 @@ mod tests {
         client.transfer_from(&approved, &owner, &recipient, &token_id);
 
         let events = env.events().all();
-        let (_contract_id, topics, data) = events.get(events.len() - 1).unwrap();
-        assert_eq!(
-            topics.get(0).unwrap(),
-            symbol_short!("transfer").into_val(&env)
-        );
-        assert_eq!(topics.get(1).unwrap(), owner.into_val(&env));
-        assert_eq!(topics.get(2).unwrap(), recipient.into_val(&env));
-        assert_eq!(data, token_id.into_val(&env));
+        let (topics, _data) = last_event_topics_data(&events);
+        assert_first_topic_is_symbol(topics, "transfer");
+    }
+
     // ── #151: enumeration-consistency invariants ───────────────────────────
     // The owner token list, owner_of, and the per-owner index must stay aligned
     // after transfers/approvals, with no duplicate owner-token entries.

@@ -386,8 +386,10 @@ impl ResolverContract {
         Ok(())
     }
 
-    pub fn update_owner(env: Env, name: String, new_owner: Address) -> Result<(), ResolverError> {
-        let mut record = get_record(&env, &name)?;
+    pub fn update_owner(env: Env, name: String, caller: Address, new_owner: Address) -> Result<(), ResolverError> {
+        let record = get_record(&env, &name)?;
+        assert_owner(&env, &name, &record, &caller, 0)?;
+        let mut record = record;
         record.owner = new_owner;
         put_record(&env, &name, &record);
         Ok(())

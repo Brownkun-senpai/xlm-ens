@@ -9,8 +9,31 @@ mod tests {
     };
     use stellar_rpc_client::Client;
     use wiremock::matchers::{method, path};
-    use wiremock::{Mock, MockServer, ResponseTemplate};
+    use wiremock::{Mock, MockServer, Request, Respond, ResponseTemplate};
     use std::collections::HashMap;
+
+    /// A wiremock responder that echoes the JSON-RPC request ID
+    /// from the incoming request, so jsonrpsee can match it.
+    struct JsonRpcResponder {
+        result: serde_json::Value,
+    }
+    impl JsonRpcResponder {
+        fn new(result: serde_json::Value) -> Self {
+            Self { result }
+        }
+    }
+    impl Respond for JsonRpcResponder {
+        fn respond(&self, request: &Request) -> ResponseTemplate {
+            let body: serde_json::Value =
+                serde_json::from_slice(&request.body).unwrap_or_default();
+            let id = body.get("id").cloned().unwrap_or(serde_json::json!(1));
+            ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": id,
+                "result": self.result,
+            }))
+        }
+    }
 
     // Valid 56-char Stellar contract IDs (C-prefix, all alphanumeric).
     const REGISTRY_ID: &str = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
@@ -236,13 +259,9 @@ mod tests {
         let mock_server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "jsonrpc": "2.0",
-                "id": 1,
-                "result": {
-                    "passphrase": "Test SDF Network ; September 2015",
-                    "protocolVersion": 21
-                }
+            .respond_with(JsonRpcResponder::new(serde_json::json!({
+                "passphrase": "Test SDF Network ; September 2015",
+                "protocolVersion": 21
             })))
             .mount(&mock_server)
             .await;
@@ -255,7 +274,7 @@ mod tests {
         )
         .await;
 
-        assert!(result.is_ok());
+        assert!(result.is_ok(), "expected Ok but got: {:?}", result);
     }
 
     #[tokio::test]
@@ -263,13 +282,9 @@ mod tests {
         let mock_server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "jsonrpc": "2.0",
-                "id": 1,
-                "result": {
-                    "passphrase": "Public Global Stellar Network ; September 2015",
-                    "protocolVersion": 21
-                }
+            .respond_with(JsonRpcResponder::new(serde_json::json!({
+                "passphrase": "Public Global Stellar Network ; September 2015",
+                "protocolVersion": 21
             })))
             .mount(&mock_server)
             .await;
@@ -295,6 +310,10 @@ mod tests {
                 );
             }
             _ => panic!("wrong error variant"),
+        }
+    }
+
+    #[tokio::test]
     async fn register_builds_real_submission() {
         // "gamma" = 5 chars → 250_000_000 stroops/year (contract tier: 4–6 chars)
         let receipt = client()
@@ -426,6 +445,8 @@ mod tests {
             _ => panic!("wrong error variant"),
         }
     }
+
+    #[tokio::test]
     async fn renew_builds_real_submission() {
         let receipt = client()
             .renew(RenewalRequest {

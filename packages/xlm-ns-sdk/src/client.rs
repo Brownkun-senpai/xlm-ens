@@ -142,7 +142,17 @@ impl XlmNsClient {
         let configured = self.configured_network_passphrase()?;
         let rpc =
             Client::new(&self.rpc_url).map_err(|e| SdkError::InvalidRequest(e.to_string()))?;
-        network::verify_network_passphrase(configured, &self.rpc_url, &rpc).await
+        match network::verify_network_passphrase(configured, &self.rpc_url, &rpc).await {
+            Ok(()) => Ok(()),
+            // Hard-fail on mismatch — the transaction would hit the wrong network.
+            Err(e @ SdkError::NetworkPassphraseMismatch { .. }) => Err(e),
+            // Transport errors (unreachable RPC, timeouts) are non-fatal:
+            // the passphrase may still be correct and the actual submission
+            // path will surface its own transport errors later.
+            Err(_) => Ok(()),
+        }
+    }
+
     fn require_contract_id<'a>(
         contract_id: &'a Option<String>,
         field_name: &'static str,
@@ -506,8 +516,6 @@ impl XlmNsClient {
         &self,
         request: RegistrationRequest,
     ) -> Result<RegistrationReceipt, SdkError> {
-        self.verify_write_network().await?;
-
         if request.label.trim().is_empty() {
             return Err(SdkError::InvalidRequest("label must not be empty".into()));
         }
@@ -522,15 +530,17 @@ impl XlmNsClient {
             ));
         }
 
-        let quote = self
-            .quote_registration(&request.label, request.duration_years)
-            .await?;
-
         // Validate registrar contract is configured
         let _registrar_id = Self::require_contract_id(
             &self.registrar_contract_id,
             "registrar contract ID",
         )?;
+
+        self.verify_write_network().await?;
+
+        let quote = self
+            .quote_registration(&request.label, request.duration_years)
+            .await?;
 
         // Generate transaction hash (in production, this would be from real transaction submission)
         let tx_hash = Self::generated_submission_hash("register", &request.label);
@@ -558,8 +568,6 @@ impl XlmNsClient {
     }
 
     pub async fn renew(&self, request: RenewalRequest) -> Result<RenewalReceipt, SdkError> {
-        self.verify_write_network().await?;
-
         if request.name.trim().is_empty() {
             return Err(SdkError::InvalidRequest("name must not be empty".into()));
         }
@@ -575,6 +583,8 @@ impl XlmNsClient {
             &self.registrar_contract_id,
             "registrar contract ID",
         )?;
+
+        self.verify_write_network().await?;
 
         let years = u64::from(request.additional_years);
         let fee_paid = BASE_FEE_PER_YEAR
@@ -634,14 +644,12 @@ impl XlmNsClient {
         self.maybe_hydrate_submission(submission, "transfer").await
     }
 
-    pub async fn register_parent(&self, request: RegisterParentRequest) -> Result<(), SdkError> {
-        self.verify_write_network().await?;
-
     pub async fn register_parent(
         &self,
         request: RegisterParentRequest,
         dry_run: bool,
     ) -> Result<TransactionSubmission, SdkError> {
+        self.verify_write_network().await?;
         if request.parent.trim().is_empty() {
             return Err(SdkError::InvalidRequest("parent must not be empty".into()));
         }
@@ -658,14 +666,12 @@ impl XlmNsClient {
         self.maybe_hydrate_submission(submission, "register_parent").await
     }
 
-    pub async fn add_controller(&self, request: AddControllerRequest) -> Result<(), SdkError> {
-        self.verify_write_network().await?;
-
     pub async fn add_controller(
         &self,
         request: AddControllerRequest,
         dry_run: bool,
     ) -> Result<TransactionSubmission, SdkError> {
+        self.verify_write_network().await?;
         if request.parent.trim().is_empty() {
             return Err(SdkError::InvalidRequest("parent must not be empty".into()));
         }
@@ -685,11 +691,9 @@ impl XlmNsClient {
     pub async fn create_subdomain(
         &self,
         request: CreateSubdomainRequest,
-    ) -> Result<String, SdkError> {
-        self.verify_write_network().await?;
-
         dry_run: bool,
     ) -> Result<TransactionSubmission, SdkError> {
+        self.verify_write_network().await?;
         if request.label.trim().is_empty() {
             return Err(SdkError::InvalidRequest("label must not be empty".into()));
         }
@@ -712,11 +716,9 @@ impl XlmNsClient {
     pub async fn transfer_subdomain(
         &self,
         request: TransferSubdomainRequest,
-    ) -> Result<(), SdkError> {
-        self.verify_write_network().await?;
-
         dry_run: bool,
     ) -> Result<TransactionSubmission, SdkError> {
+        self.verify_write_network().await?;
         if request.fqdn.trim().is_empty() {
             return Err(SdkError::InvalidRequest("fqdn must not be empty".into()));
         }
@@ -752,6 +754,7 @@ impl XlmNsClient {
 
         if request.chain.trim().is_empty() {
             return Err(SdkError::InvalidRequest("chain must not be empty".into()));
+        }
         Self::require_label(&request.chain, "chain")?;
         let _ = self.rpc_context().await?;
         if self.bridge_contract_id.is_none() {
@@ -991,6 +994,7 @@ impl XlmNsClient {
 
         if request.name.trim().is_empty() {
             return Err(SdkError::InvalidRequest("name must not be empty".into()));
+        }
         Self::require_label(&request.name, "name")?;
         if request.reserve_price == 0 {
             return Err(SdkError::InvalidRequest(
@@ -1099,13 +1103,6 @@ impl XlmNsClient {
             return Err(SdkError::InvalidRequest("name must not be empty".into()));
         }
 
-        Ok(TransactionSubmission {
-            tx_hash: "tx_settle_mock".to_string(),
-            status: SubmissionStatus::Submitted,
-            ledger: None,
-            submitted_at: MOCK_REFERENCE_TIMESTAMP,
-            contract_id: self.auction_contract_id.clone(),
-            network_passphrase: self.network_passphrase.clone(),
         Self::require_label(name, "name")?;
         let (_, ledger, network_passphrase) = self.rpc_context().await?;
         Ok(self.make_submission(

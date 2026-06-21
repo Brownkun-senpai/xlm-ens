@@ -32,6 +32,8 @@
     [],
     [],
     [],
+    [],
+    [],
     []
   ],
   "ledger": {
@@ -218,10 +220,19 @@
                 "map": [
                   {
                     "key": {
-                      "symbol": "address"
+                      "symbol": "addresses"
                     },
                     "val": {
-                      "string": "GDEF"
+                      "map": [
+                        {
+                          "key": {
+                            "string": "stellar"
+                          },
+                          "val": {
+                            "string": "GDEF"
+                          }
+                        }
+                      ]
                     }
                   },
                   {
@@ -254,34 +265,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
-            "contract_data": {
-              "ext": "v0",
-              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
-              "key": {
-                "vec": [
-                  {
-                    "symbol": "Primary"
-                  },
-                  {
-                    "string": "GABC"
-                  }
-                ]
-              },
-              "durability": "persistent",
-              "val": {
-                "string": "pay.timmy.xlm"
-              }
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": 4095
+        "live_until": 6311999
       },
       {
         "entry": {
@@ -308,34 +292,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
-            "contract_data": {
-              "ext": "v0",
-              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
-              "key": {
-                "vec": [
-                  {
-                    "symbol": "Reverse"
-                  },
-                  {
-                    "string": "GABC"
-                  }
-                ]
-              },
-              "durability": "persistent",
-              "val": {
-                "string": "pay.timmy.xlm"
-              }
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": 4095
+        "live_until": 6311999
       },
       {
         "entry": {
@@ -362,7 +319,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 6311999
       },
       {
         "entry": {
@@ -385,7 +342,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 6311999
       },
       {
         "entry": {
@@ -399,7 +356,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 6311999
       }
     ]
   },

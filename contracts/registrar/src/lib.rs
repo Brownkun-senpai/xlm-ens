@@ -107,6 +107,7 @@ pub enum RegistrarError {
     Validation = 7,
     RegistrationClaimable = 8,
     NotInitialized = 9,
+    AlreadyInitialized = 10,
 }
 
 #[contract]
@@ -114,8 +115,12 @@ pub struct RegistrarContract;
 
 #[contractimpl]
 impl RegistrarContract {
-    pub fn initialize(env: Env, registry: Address) {
+    pub fn initialize(env: Env, registry: Address) -> Result<(), RegistrarError> {
+        if env.storage().instance().has(&DataKey::Registry) {
+            return Err(RegistrarError::AlreadyInitialized);
+        }
         env.storage().instance().set(&DataKey::Registry, &registry);
+        Ok(())
     }
 
     // Release policy: registrations are only released through the normal
@@ -548,5 +553,5 @@ pub fn can_renew(expiry_unix: u64, now_unix: u64) -> Result<bool, RegistrarError
         return Err(RegistrarError::RegistrationClaimable);
     }
 
-    Ok(now_unix <= grace_period_end)
+    Ok(true)
 }

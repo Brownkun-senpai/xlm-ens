@@ -309,7 +309,7 @@ pub fn config_template(network: Network) -> String {
         ),
         Network::Mainnet => (
             "https://mainnet.stellar.org:443",
-            "Public Global Stellar Network ; October 2015",
+            "Public Global Stellar Network ; September 2015",
         ),
     };
 
@@ -481,6 +481,6 @@ fn default_rpc_url(network: Network) -> &'static str {
 fn default_network_passphrase(network: Network) -> &'static str {
     match network {
         Network::Testnet => "Test SDF Network ; September 2015",
-        Network::Mainnet => "Public Global Stellar Network ; October 2015",
+        Network::Mainnet => "Public Global Stellar Network ; September 2015",
     }
 }

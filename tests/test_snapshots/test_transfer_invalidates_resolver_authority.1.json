@@ -288,10 +288,19 @@
                 "map": [
                   {
                     "key": {
-                      "symbol": "address"
+                      "symbol": "addresses"
                     },
                     "val": {
-                      "string": "G_BOB"
+                      "map": [
+                        {
+                          "key": {
+                            "string": "stellar"
+                          },
+                          "val": {
+                            "string": "G_BOB"
+                          }
+                        }
+                      ]
                     }
                   },
                   {
@@ -324,34 +333,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
-            "contract_data": {
-              "ext": "v0",
-              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
-              "key": {
-                "vec": [
-                  {
-                    "symbol": "Reverse"
-                  },
-                  {
-                    "string": "G_ALICE"
-                  }
-                ]
-              },
-              "durability": "persistent",
-              "val": {
-                "string": "alice.xlm"
-              }
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": 4095
+        "live_until": 6311999
       },
       {
         "entry": {
@@ -378,7 +360,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 6311999
       },
       {
         "entry": {
@@ -414,7 +396,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 6311999
       },
       {
         "entry": {
@@ -468,9 +450,76 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 6311999
       }
     ]
   },
-  "events": []
+  "events": [
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
+        "type_": "contract",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "resolver"
+              },
+              {
+                "symbol": "fwd_set"
+              }
+            ],
+            "data": {
+              "vec": [
+                {
+                  "string": "alice.xlm"
+                },
+                {
+                  "string": "G_BOB"
+                },
+                {
+                  "string": "stellar"
+                },
+                {
+                  "u64": "1000000"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "failed_call": false
+    },
+    {
+      "event": {
+        "ext": "v0",
+        "contract_id": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
+        "type_": "contract",
+        "body": {
+          "v0": {
+            "topics": [
+              {
+                "symbol": "resolver"
+              },
+              {
+                "symbol": "rev_set"
+              }
+            ],
+            "data": {
+              "vec": [
+                {
+                  "string": "G_BOB"
+                },
+                {
+                  "string": "alice.xlm"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "failed_call": false
+    }
+  ]
 }

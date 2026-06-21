@@ -158,7 +158,10 @@ pub async fn run_availability(
                 // a mock reference timestamp the SDK uses we treat it as expired.
                 // A grace-period window of ~30 days (in seconds) is assumed.
                 const GRACE_SECONDS: u64 = 30 * 24 * 3600;
-                let mock_now: u64 = 1_700_000_000; // matches SDK MOCK_REFERENCE_TIMESTAMP
+                let mock_now: u64 = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
                 if exp <= mock_now {
                     ("claimable (expired, past grace period)", true)
                 } else if exp <= mock_now + GRACE_SECONDS {

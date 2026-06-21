@@ -46,9 +46,27 @@ impl Keypair {
             });
         }
 
+        let strkey = stellar_strkey::Strkey::from_string(trimmed).map_err(|_| {
+            SigningError::InvalidKey {
+                reason: "failed to decode secret key strkey encoding".to_string(),
+            }
+        })?;
+        let seed = match strkey {
+            stellar_strkey::Strkey::PrivateKeyEd25519(s) => s,
+            _ => {
+                return Err(SigningError::InvalidKey {
+                    reason: "expected an ed25519 private key".to_string(),
+                });
+            }
+        };
+        let signing_key = ed25519_dalek::SigningKey::from_bytes(&seed.0);
+        let verifying_key = signing_key.verifying_key();
+        let public_key =
+            stellar_strkey::ed25519::PublicKey(verifying_key.to_bytes()).to_string();
+
         Ok(Self {
             secret_key: trimmed.to_string(),
-            public_key: format!("G{}", &trimmed[1..]),
+            public_key,
         })
     }
 }
