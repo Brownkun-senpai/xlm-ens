@@ -13,6 +13,7 @@ pub enum ContractErrorCode {
 pub enum SdkError {
     InvalidRequest(String),
     Transport(String),
+    Ingestion(String),
     ContractError(ContractErrorCode),
     /// The network passphrase returned by the RPC server does not
     /// match the passphrase configured in the SDK client.
@@ -63,6 +64,7 @@ impl fmt::Display for SdkError {
         match self {
             Self::InvalidRequest(message) => write!(f, "invalid request: {message}"),
             Self::Transport(message) => write!(f, "transport error: {message}"),
+            Self::Ingestion(message) => write!(f, "ingestion error: {message}"),
             Self::ContractError(code) => write!(f, "contract error: {code:?}"),
             Self::NetworkPassphraseMismatch {
                 configured,
