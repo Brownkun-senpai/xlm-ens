@@ -18,7 +18,8 @@ use std::hash::{Hash as StdHash, Hasher};
 use std::time::{SystemTime, UNIX_EPOCH};
 use stellar_rpc_client::Client;
 use stellar_xdr::curr::Hash as XdrHash;
-use xlm_ns_common::validation::{validate_account_address, validate_contract_id};
+use xlm_ns_common::name_validation::validate_name;
+use xlm_ns_common::validation::{validate_account_address, validate_contract_id, validate_label};
 use xlm_ns_common::{GRACE_PERIOD_SECONDS, YEAR_SECONDS};
 
 const MOCK_REFERENCE_TIMESTAMP: u64 = 1_682_200_000;
@@ -294,6 +295,7 @@ impl XlmNsClient {
     }
 
     pub async fn resolve(&self, name: &str) -> Result<ResolutionResult, SdkError> {
+        Self::validate_fqdn(name)?;
         let _registry_id =
             Self::require_contract_id(&self.registry_contract_id, "registry contract ID")?;
         let resolver_contract_id = self.resolver_contract_id.clone();
@@ -331,6 +333,7 @@ impl XlmNsClient {
     }
 
     pub async fn get_registry_metadata(&self, name: &str) -> Result<NameRecord, SdkError> {
+        Self::validate_fqdn(name)?;
         let _registry_id =
             Self::require_contract_id(&self.registry_contract_id, "registry contract ID")?;
         let resolver_contract_id = self.resolver_contract_id.clone();
@@ -509,12 +512,12 @@ impl XlmNsClient {
     }
 
     pub async fn get_text_records(&self, name: &str) -> Result<HashMap<String, String>, SdkError> {
-        Self::require_label(name, "name")?;
+        Self::validate_fqdn(name)?;
         Ok(make_text_records(name))
     }
 
     pub async fn get_text_record(&self, name: &str, key: &str) -> Result<TextRecord, SdkError> {
-        Self::require_label(name, "name")?;
+        Self::validate_fqdn(name)?;
         Self::require_label(key, "key")?;
 
         Ok(TextRecord {
@@ -533,6 +536,7 @@ impl XlmNsClient {
         if update.name.trim().is_empty() {
             return Err(SdkError::InvalidRequest("name must not be empty".into()));
         }
+        Self::validate_fqdn(&update.name)?;
         if update.key.trim().is_empty() {
             return Err(SdkError::InvalidRequest("key must not be empty".into()));
         }
@@ -562,6 +566,7 @@ impl XlmNsClient {
         if update.name.trim().is_empty() {
             return Err(SdkError::InvalidRequest("name must not be empty".into()));
         }
+        Self::validate_fqdn(&update.name)?;
         let submission = TransactionSubmission {
             tx_hash: Self::generated_submission_hash("set_text_records", &update.name),
             status: SubmissionStatus::Submitted,
@@ -581,7 +586,7 @@ impl XlmNsClient {
         label: &str,
         duration_years: u32,
     ) -> Result<RegistrationQuote, SdkError> {
-        Self::require_label(label, "label")?;
+        Self::validate_bare_label(label)?;
         if duration_years == 0 {
             return Err(SdkError::InvalidRequest(
                 "duration_years must be greater than zero".into(),
@@ -628,7 +633,7 @@ impl XlmNsClient {
         if request.owner.trim().is_empty() {
             return Err(SdkError::InvalidRequest("owner must not be empty".into()));
         }
-        Self::require_label(&request.label, "label")?;
+        Self::validate_bare_label(&request.label)?;
         Self::require_label(&request.owner, "owner")?;
         if request.duration_years == 0 {
             return Err(SdkError::InvalidRequest(
@@ -677,7 +682,7 @@ impl XlmNsClient {
         if request.name.trim().is_empty() {
             return Err(SdkError::InvalidRequest("name must not be empty".into()));
         }
-        Self::require_label(&request.name, "name")?;
+        Self::validate_fqdn(&request.name)?;
         if request.additional_years == 0 {
             return Err(SdkError::InvalidRequest(
                 "additional_years must be greater than zero".into(),
@@ -729,6 +734,7 @@ impl XlmNsClient {
         if request.name.trim().is_empty() {
             return Err(SdkError::InvalidRequest("name must not be empty".into()));
         }
+        Self::validate_fqdn(&request.name)?;
         if request.new_owner.trim().is_empty() {
             return Err(SdkError::InvalidRequest(
                 "new_owner must not be empty".into(),
@@ -757,6 +763,7 @@ impl XlmNsClient {
         if request.parent.trim().is_empty() {
             return Err(SdkError::InvalidRequest("parent must not be empty".into()));
         }
+        Self::validate_fqdn(&request.parent)?;
         Self::validate_account(&request.owner, "owner")?;
         let submission = self
             .simulate_and_submit(
@@ -780,6 +787,7 @@ impl XlmNsClient {
         if request.parent.trim().is_empty() {
             return Err(SdkError::InvalidRequest("parent must not be empty".into()));
         }
+        Self::validate_fqdn(&request.parent)?;
         Self::validate_account(&request.controller, "controller")?;
         let submission = self
             .simulate_and_submit(
@@ -803,9 +811,11 @@ impl XlmNsClient {
         if request.label.trim().is_empty() {
             return Err(SdkError::InvalidRequest("label must not be empty".into()));
         }
+        Self::validate_bare_label(&request.label)?;
         if request.parent.trim().is_empty() {
             return Err(SdkError::InvalidRequest("parent must not be empty".into()));
         }
+        Self::validate_fqdn(&request.parent)?;
         Self::validate_account(&request.owner, "owner")?;
         let submission = self
             .simulate_and_submit(
@@ -829,6 +839,7 @@ impl XlmNsClient {
         if request.fqdn.trim().is_empty() {
             return Err(SdkError::InvalidRequest("fqdn must not be empty".into()));
         }
+        Self::validate_fqdn(&request.fqdn)?;
         Self::validate_account(&request.new_owner, "new_owner")?;
         let submission = self
             .simulate_and_submit(
@@ -844,7 +855,7 @@ impl XlmNsClient {
     }
 
     pub async fn get_subdomains(&self, parent: &str) -> Result<Vec<Subdomain>, SdkError> {
-        Self::require_label(parent, "parent")?;
+        Self::validate_fqdn(parent)?;
         Ok(vec![
             Subdomain {
                 label: "blog".to_string(),
@@ -905,7 +916,7 @@ impl XlmNsClient {
     }
 
     pub async fn get_bridge_routes(&self, name: &str) -> Result<Vec<BridgeRoute>, SdkError> {
-        Self::require_label(name, "name")?;
+        Self::validate_fqdn(name)?;
         Ok(vec![
             BridgeRoute {
                 destination_chain: "ethereum".to_string(),
@@ -921,7 +932,7 @@ impl XlmNsClient {
     }
 
     pub async fn build_message(&self, request: BuildMessageRequest) -> Result<String, SdkError> {
-        Self::require_label(&request.name, "name")?;
+        Self::validate_fqdn(&request.name)?;
         Self::require_label(&request.chain, "chain")?;
 
         let route = self.get_route(&request.chain).await?.ok_or_else(|| {
@@ -1036,7 +1047,7 @@ impl XlmNsClient {
     }
 
     pub async fn get_auction(&self, name: &str) -> Result<Option<AuctionInfo>, SdkError> {
-        Self::require_label(name, "name")?;
+        Self::validate_fqdn(name)?;
 
         if name == "active.xlm" {
             Ok(Some(AuctionInfo {
@@ -1111,7 +1122,7 @@ impl XlmNsClient {
         if request.name.trim().is_empty() {
             return Err(SdkError::InvalidRequest("name must not be empty".into()));
         }
-        Self::require_label(&request.name, "name")?;
+        Self::validate_fqdn(&request.name)?;
         if request.reserve_price == 0 {
             return Err(SdkError::InvalidRequest(
                 "reserve_price must be greater than zero".into(),
@@ -1146,7 +1157,7 @@ impl XlmNsClient {
         if request.name.trim().is_empty() {
             return Err(SdkError::InvalidRequest("name must not be empty".into()));
         }
-        Self::require_label(&request.name, "name")?;
+        Self::validate_fqdn(&request.name)?;
         if request.amount == 0 {
             return Err(SdkError::InvalidRequest(
                 "bid amount must be greater than zero".into(),
@@ -1214,8 +1225,7 @@ impl XlmNsClient {
         if name.trim().is_empty() {
             return Err(SdkError::InvalidRequest("name must not be empty".into()));
         }
-
-        Self::require_label(name, "name")?;
+        Self::validate_fqdn(name)?;
         let (_, ledger, network_passphrase) = self.rpc_context().await?;
         Ok(self.make_submission(
             "settle_auction",
@@ -1235,7 +1245,7 @@ impl XlmNsClient {
         &self,
         request: &RegistrationRequest,
     ) -> Result<SimulationResult, SdkError> {
-        Self::require_label(&request.label, "label")?;
+        Self::validate_bare_label(&request.label)?;
         Self::require_label(&request.owner, "owner")?;
         if request.duration_years == 0 {
             return Err(SdkError::InvalidRequest(
@@ -1263,7 +1273,7 @@ impl XlmNsClient {
         &self,
         request: &RenewalRequest,
     ) -> Result<SimulationResult, SdkError> {
-        Self::require_label(&request.name, "name")?;
+        Self::validate_fqdn(&request.name)?;
         if request.additional_years == 0 {
             return Err(SdkError::InvalidRequest(
                 "additional_years must be greater than zero".into(),
@@ -1296,6 +1306,16 @@ impl XlmNsClient {
             )));
         }
         Ok(())
+    }
+
+    fn validate_fqdn(name: &str) -> Result<(), SdkError> {
+        validate_name(name)
+            .map(|_| ())
+            .map_err(|e| SdkError::InvalidRequest(e.to_string()))
+    }
+
+    fn validate_bare_label(label: &str) -> Result<(), SdkError> {
+        validate_label(label).map_err(|e| SdkError::InvalidRequest(e.to_string()))
     }
 
     async fn rpc_context(&self) -> Result<(Client, u32, String), SdkError> {
