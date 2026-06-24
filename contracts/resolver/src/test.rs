@@ -32,9 +32,7 @@ mod tests {
             Some(address.clone())
         );
         assert_eq!(
-            record
-                .text_records
-                .get(String::from_str(&env, "twitter")),
+            record.text_records.get(String::from_str(&env, "twitter")),
             Some(String::from_str(&env, "@timmy"))
         );
         assert_eq!(record.updated_at, 101);
@@ -240,9 +238,7 @@ mod tests {
         );
         assert_eq!(record.text_records.len(), 1);
         assert_eq!(
-            record
-                .text_records
-                .get(String::from_str(&env, "twitter")),
+            record.text_records.get(String::from_str(&env, "twitter")),
             Some(String::from_str(&env, "@timmy"))
         );
         assert_eq!(record.updated_at, 102);
@@ -881,7 +877,9 @@ mod tests {
         let record = client.resolve(&name).unwrap();
         assert_eq!(record.text_records.len(), MAX_TEXT_RECORDS as u32);
         assert_eq!(
-            record.text_records.get(String::from_str(&env, "custom:key-0")),
+            record
+                .text_records
+                .get(String::from_str(&env, "custom:key-0")),
             Some(String::from_str(&env, "updated"))
         );
     }
@@ -947,7 +945,17 @@ mod tests {
 
         let keys = client.get_allowed_keys();
         assert_eq!(keys.len(), 9);
-        for key in &["email", "url", "avatar", "description", "twitter", "github", "discord", "telegram", "nostr"] {
+        for key in &[
+            "email",
+            "url",
+            "avatar",
+            "description",
+            "twitter",
+            "github",
+            "discord",
+            "telegram",
+            "nostr",
+        ] {
             assert!(
                 keys.iter().any(|k| k == String::from_str(&env, key)),
                 "expected standard key '{key}' to be in allowed keys"
@@ -1005,7 +1013,9 @@ mod tests {
         let record = client.resolve(&name).unwrap();
         assert_eq!(record.text_records.len(), 2);
         assert_eq!(
-            record.text_records.get(String::from_str(&env, "custom:linkedin")),
+            record
+                .text_records
+                .get(String::from_str(&env, "custom:linkedin")),
             Some(String::from_str(&env, "alice123"))
         );
     }
@@ -1028,7 +1038,10 @@ mod tests {
                 &101,
             );
         }));
-        assert!(result.is_err(), "custom key with space in suffix must be rejected");
+        assert!(
+            result.is_err(),
+            "custom key with space in suffix must be rejected"
+        );
     }
 
     #[test]
@@ -1077,12 +1090,16 @@ mod tests {
 
         // "linkedin" is not in the default schema
         let keys_before = client.get_allowed_keys();
-        assert!(!keys_before.iter().any(|k| k == String::from_str(&env, "linkedin")));
+        assert!(!keys_before
+            .iter()
+            .any(|k| k == String::from_str(&env, "linkedin")));
 
         client.add_allowed_key(&String::from_str(&env, "linkedin"));
 
         let keys_after = client.get_allowed_keys();
-        assert!(keys_after.iter().any(|k| k == String::from_str(&env, "linkedin")));
+        assert!(keys_after
+            .iter()
+            .any(|k| k == String::from_str(&env, "linkedin")));
         // Adding the same key again is idempotent
         client.add_allowed_key(&String::from_str(&env, "linkedin"));
         assert_eq!(client.get_allowed_keys().len(), keys_after.len());

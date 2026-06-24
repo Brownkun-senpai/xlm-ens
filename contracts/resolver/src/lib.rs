@@ -834,11 +834,8 @@ fn validate_text_key(env: &Env, key: &String) -> Result<String, ResolverError> {
     }
 
     for b in &buf[..len] {
-        let valid = b.is_ascii_lowercase()
-            || b.is_ascii_digit()
-            || *b == b'.'
-            || *b == b'-'
-            || *b == b'_';
+        let valid =
+            b.is_ascii_lowercase() || b.is_ascii_digit() || *b == b'.' || *b == b'-' || *b == b'_';
         if !valid {
             return Err(ResolverError::InvalidKey);
         }
