@@ -1,3 +1,7 @@
+extern crate alloc;
+use alloc::format;
+use alloc::string::String;
+
 pub fn build_forward_gmp_message(
     name: &impl core::fmt::Display,
     destination_chain: &impl core::fmt::Display,

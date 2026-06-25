@@ -1,3 +1,4 @@
+use alloc::string::{String, ToString};
 use crate::constants::{
     MAX_NAME_LENGTH, MAX_REGISTRATION_YEARS, MIN_NAME_LENGTH, MIN_REGISTRATION_YEARS,
 };

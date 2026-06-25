@@ -41,4 +41,5 @@ impl fmt::Display for CommonError {
     }
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for CommonError {}

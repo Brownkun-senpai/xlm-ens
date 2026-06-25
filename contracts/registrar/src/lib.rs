@@ -1,3 +1,4 @@
+#![no_std]
 pub mod expiry;
 pub mod pricing;
 mod test;
