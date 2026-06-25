@@ -1,8 +1,9 @@
+#![cfg_attr(not(test), no_std)]
 pub mod expiry;
 pub mod pricing;
 mod test;
 
-use expiry::expiry_from_now;
+use expiry::{expiry_from_now, grace_period_ends_at_with_duration};
 use pricing::price_for_label_length;
 use soroban_sdk::{
     contract, contracterror, contractevent, contractimpl, contracttype, symbol_short, Address,
@@ -12,8 +13,11 @@ use xlm_ns_common::soroban::{
     build_xlm_name, extract_label_soroban, validate_label_soroban,
     validate_registration_years_soroban,
 };
-use xlm_ns_common::time::grace_period_ends_at;
 pub use xlm_ns_common::GRACE_PERIOD_SECONDS;
+
+pub const DEFAULT_GRACE_PERIOD_SECONDS: u64 = GRACE_PERIOD_SECONDS;
+pub const MIN_GRACE_PERIOD_SECONDS: u64 = 86_400; // 1 day
+pub const MAX_GRACE_PERIOD_SECONDS: u64 = 31_536_000; // 365 days
 
 pub const ADMIN_RECOVERY_SUPPORTED: bool = false;
 pub const CONTRACT_VERSION: u32 = 1;
@@ -113,6 +117,7 @@ enum DataKey {
     RegistrationCount,
     RenewalCount,
     RateLimitConfig,
+    GracePeriodSeconds,
     WhitelistedAddress(Address),
     RegistrationWindow(Address, u64),
     Admin,
@@ -162,6 +167,12 @@ impl RegistrarContract {
                 .persistent()
                 .set(&DataKey::RateLimitConfig, &config);
         }
+
+        if !env.storage().persistent().has(&DataKey::GracePeriodSeconds) {
+            env.storage()
+                .persistent()
+                .set(&DataKey::GracePeriodSeconds, &DEFAULT_GRACE_PERIOD_SECONDS);
+        }
         Ok(())
     }
 
@@ -208,7 +219,13 @@ impl RegistrarContract {
             },
         );
 
+<<<<<<< HEAD
         env.deployer().update_current_contract_wasm(new_wasm_hash.to_bytes());
+=======
+        env.deployer()
+            .update_current_contract_wasm(new_wasm_hash.to_bytes());
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+>>>>>>> upstream/main
 
         Ok(())
     }
@@ -269,14 +286,14 @@ impl RegistrarContract {
     }
 
     pub fn quote_registration(
-        _env: Env,
+        env: Env,
         label: String,
         years: u64,
         now_unix: u64,
     ) -> Result<RegistrationQuote, RegistrarError> {
         validate_label_soroban(&label).map_err(|_| RegistrarError::Validation)?;
         validate_registration_years_soroban(years).map_err(|_| RegistrarError::Validation)?;
-        Ok(build_quote(&label, years, now_unix))
+        Ok(build_quote(&env, &label, years, now_unix))
     }
 
     /// Issue #220: Read-only renewal quote for an existing registration.
@@ -312,7 +329,7 @@ impl RegistrarContract {
             fee_stroops: annual_fee.saturating_mul(years),
             current_expiry_unix: record.expires_at,
             extended_expiry_unix,
-            grace_period_ends_at: grace_period_ends_at(extended_expiry_unix),
+            grace_period_ends_at: compute_grace_period_ends_at(&env, extended_expiry_unix),
             pricing: PricingBreakdown {
                 annual_fee_stroops: annual_fee,
                 duration_years: years,
@@ -352,7 +369,7 @@ impl RegistrarContract {
         // Check rate limit before proceeding with registration
         check_rate_limit(&env, &owner, now_unix)?;
 
-        let quote = build_quote(&label, years, now_unix);
+        let quote = build_quote(&env, &label, years, now_unix);
         if payment_stroops < quote.fee_stroops {
             return Err(RegistrarError::InsufficientFee);
         }
@@ -458,7 +475,7 @@ impl RegistrarContract {
         if record.owner != caller {
             return Err(RegistrarError::Unauthorized);
         }
-        match can_renew(record.expires_at, now_unix) {
+        match can_renew(record.grace_period_ends_at, now_unix) {
             Ok(true) => {}
             Ok(false) => return Err(RegistrarError::NotRenewable),
             Err(e) => return Err(e),
@@ -476,7 +493,7 @@ impl RegistrarContract {
         };
         let expires_at = expiry_from_now(base_time, years);
         record.expires_at = expires_at;
-        record.grace_period_ends_at = grace_period_ends_at(expires_at);
+        record.grace_period_ends_at = compute_grace_period_ends_at(&env, expires_at);
         record.renewed_at = now_unix;
         record.fee_paid = record.fee_paid.saturating_add(payment_stroops);
         env.storage()
@@ -671,6 +688,142 @@ impl RegistrarContract {
             })
     }
 
+    /// Governance function: Set the post-expiry grace period duration.
+    ///
+    /// Affects grace calculations for new registrations and renewals. Existing
+    /// registrations keep their stored `grace_period_ends_at` timestamps.
+    pub fn set_grace_period(env: Env, grace_period_seconds: u64) -> Result<(), RegistrarError> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(RegistrarError::NotInitialized)?;
+        admin.require_auth();
+
+        if grace_period_seconds < MIN_GRACE_PERIOD_SECONDS
+            || grace_period_seconds > MAX_GRACE_PERIOD_SECONDS
+        {
+            return Err(RegistrarError::Validation);
+        }
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::GracePeriodSeconds, &grace_period_seconds);
+
+        env.events().publish(
+            (symbol_short!("registrar"), symbol_short!("grace")),
+            grace_period_seconds,
+        );
+
+        Ok(())
+    }
+
+    /// Read-only accessor for the configured grace period duration in seconds.
+    pub fn get_grace_period(env: Env) -> u64 {
+        get_grace_period_seconds(&env)
+    }
+
+    /// Renew a name that has expired but is still within its grace period.
+    ///
+    /// Uses standard renewal pricing. Rejects renewals while the name is still
+    /// active or after the grace window has ended.
+    pub fn extend_during_grace(
+        env: Env,
+        name: String,
+        caller: Address,
+        years: u64,
+        payment_stroops: u64,
+        now_unix: u64,
+    ) -> Result<(), RegistrarError> {
+        caller.require_auth();
+
+        let label = extract_label_soroban(&env, &name).map_err(|_| RegistrarError::Validation)?;
+        validate_registration_years_soroban(years).map_err(|_| RegistrarError::Validation)?;
+
+        let record = env
+            .storage()
+            .persistent()
+            .get::<_, RegistrationRecord>(&DataKey::Registration(name.clone()))
+            .ok_or(RegistrarError::NotFound)?;
+
+        if record.owner != caller {
+            return Err(RegistrarError::Unauthorized);
+        }
+
+        if now_unix <= record.expires_at {
+            return Err(RegistrarError::NotRenewable);
+        }
+
+        if now_unix > record.grace_period_ends_at {
+            return Err(RegistrarError::RegistrationClaimable);
+        }
+
+        let fee_due = price_for_label_length(label.len() as usize).saturating_mul(years);
+        if payment_stroops < fee_due {
+            return Err(RegistrarError::InsufficientFee);
+        }
+
+        let expires_at = expiry_from_now(now_unix, years);
+        let mut record = record;
+        record.expires_at = expires_at;
+        record.grace_period_ends_at = compute_grace_period_ends_at(&env, expires_at);
+        record.renewed_at = now_unix;
+        record.fee_paid = record.fee_paid.saturating_add(payment_stroops);
+        env.storage()
+            .persistent()
+            .set(&DataKey::Registration(name.clone()), &record);
+
+        let treasury = env
+            .storage()
+            .persistent()
+            .get::<_, u64>(&DataKey::Treasury)
+            .unwrap_or(0);
+        env.storage().persistent().set(
+            &DataKey::Treasury,
+            &treasury.saturating_add(payment_stroops),
+        );
+        let renew_count = env
+            .storage()
+            .persistent()
+            .get::<_, u64>(&DataKey::RenewalCount)
+            .unwrap_or(0);
+        env.storage()
+            .persistent()
+            .set(&DataKey::RenewalCount, &renew_count.saturating_add(1));
+
+        let registry: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Registry)
+            .ok_or(RegistrarError::NotInitialized)?;
+
+        env.invoke_contract::<()>(
+            &registry,
+            &Symbol::new(&env, "renew"),
+            (
+                name.clone(),
+                caller.clone(),
+                record.expires_at,
+                record.grace_period_ends_at,
+                now_unix,
+            )
+                .into_val(&env),
+        );
+
+        env.events().publish(
+            (symbol_short!("registrar"), symbol_short!("grrenew")),
+            (
+                name,
+                caller,
+                payment_stroops,
+                record.expires_at,
+                record.grace_period_ends_at,
+            ),
+        );
+
+        Ok(())
+    }
+
     /// Governance function: Whitelist an address to bypass rate limiting
     pub fn whitelist_address(env: Env, address: Address) -> Result<(), RegistrarError> {
         env.storage()
@@ -778,14 +931,14 @@ fn record_registration(env: &Env, address: &Address, now_unix: u64) -> Result<()
     Ok(())
 }
 
-fn build_quote(label: &String, years: u64, now_unix: u64) -> RegistrationQuote {
+fn build_quote(env: &Env, label: &String, years: u64, now_unix: u64) -> RegistrationQuote {
     let annual_fee = price_for_label_length(label.len() as usize);
     let expiry_unix = expiry_from_now(now_unix, years);
 
     RegistrationQuote {
         fee_stroops: annual_fee.saturating_mul(years),
         expiry_unix,
-        grace_period_ends_at: grace_period_ends_at(expiry_unix),
+        grace_period_ends_at: compute_grace_period_ends_at(env, expiry_unix),
         pricing: PricingBreakdown {
             annual_fee_stroops: annual_fee,
             duration_years: years,
@@ -794,10 +947,19 @@ fn build_quote(label: &String, years: u64, now_unix: u64) -> RegistrationQuote {
     }
 }
 
-pub fn can_renew(expiry_unix: u64, now_unix: u64) -> Result<bool, RegistrarError> {
-    let grace_period_end = grace_period_ends_at(expiry_unix);
+fn get_grace_period_seconds(env: &Env) -> u64 {
+    env.storage()
+        .persistent()
+        .get(&DataKey::GracePeriodSeconds)
+        .unwrap_or(DEFAULT_GRACE_PERIOD_SECONDS)
+}
 
-    if now_unix > grace_period_end {
+fn compute_grace_period_ends_at(env: &Env, expiry_unix: u64) -> u64 {
+    grace_period_ends_at_with_duration(expiry_unix, get_grace_period_seconds(env))
+}
+
+pub fn can_renew(grace_period_ends_at: u64, now_unix: u64) -> Result<bool, RegistrarError> {
+    if now_unix > grace_period_ends_at {
         return Err(RegistrarError::RegistrationClaimable);
     }
 

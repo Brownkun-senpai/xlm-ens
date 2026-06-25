@@ -1,8 +1,15 @@
+#![cfg_attr(not(test), no_std)]
 mod test;
 
 use soroban_sdk::{
     contract, contracterror, contractevent, contractimpl, contracttype, symbol_short, token,
+<<<<<<< HEAD
     Address, Bytes, Env, String, Vec,
+=======
+    Address, Bytes, BytesN, Env, String, Vec,
+    contract, contracterror, contractevent, contractimpl, contracttype, token, Address, Bytes,
+    BytesN, Env, String, Vec,
+>>>>>>> upstream/main
 };
 use xlm_ns_common::soroban::validate_fqdn_soroban;
 use xlm_ns_common::time::is_time_window_open;
@@ -71,9 +78,85 @@ pub enum AuctionError {
 pub const CONTRACT_VERSION: u32 = 1;
 
 #[contractevent]
+<<<<<<< HEAD
 #[contracttype]
             (current_version, target_version, admin),
         );
+=======
+pub struct ContractUpgraded {
+    pub old_version: u32,
+    pub new_version: u32,
+    pub admin: Address,
+}
+
+#[contractevent]
+pub struct AuctionCancelled {
+    pub name: String,
+    pub admin: Address,
+    pub reason: String,
+}
+
+#[contract]
+pub struct AuctionContract;
+
+#[contractimpl]
+impl AuctionContract {
+    pub fn version(_env: Env) -> u32 {
+        CONTRACT_VERSION
+    }
+
+    pub fn initialize(env: Env, admin: Address) -> Result<(), AuctionError> {
+        if env.storage().instance().has(&DataKey::Admin) {
+            return Err(AuctionError::AlreadyExists);
+        }
+        env.storage().instance().set(&DataKey::Admin, &admin);
+        env.storage()
+            .persistent()
+            .set(&DataKey::ContractVersion, &CONTRACT_VERSION);
+        Ok(())
+    }
+
+    pub fn get_version(env: Env) -> u32 {
+        env.storage()
+            .persistent()
+            .get(&DataKey::ContractVersion)
+            .unwrap_or(CONTRACT_VERSION)
+    }
+
+    pub fn upgrade(
+        env: Env,
+        new_wasm_hash: BytesN<32>,
+        migration_data: Bytes,
+    ) -> Result<(), AuctionError> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(AuctionError::UpgradeFailed)?;
+        admin.require_auth();
+
+        let current_version = Self::get_version(env.clone());
+        let target_version = decode_target_version(&migration_data);
+
+        for v in current_version..target_version {
+            migrate(v, v + 1, &migration_data);
+        }
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::ContractVersion, &target_version);
+
+        env.events().publish(
+            (symbol_short!("auction"), symbol_short!("upgraded")),
+            (current_version, target_version, admin),
+        );
+        ContractUpgraded {
+            old_version: current_version,
+            new_version: target_version,
+            admin,
+        }
+        .publish(&env);
+>>>>>>> upstream/main
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);
 

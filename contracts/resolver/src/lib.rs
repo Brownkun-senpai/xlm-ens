@@ -1,3 +1,4 @@
+#![cfg_attr(not(test), no_std)]
 mod test;
 
 use soroban_sdk::{
@@ -210,7 +211,13 @@ impl ResolverContract {
             },
         );
 
+<<<<<<< HEAD
         env.deployer().update_current_contract_wasm(new_wasm_hash.to_bytes());
+=======
+        env.deployer()
+            .update_current_contract_wasm(new_wasm_hash.to_bytes());
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+>>>>>>> upstream/main
 
         Ok(())
     }
