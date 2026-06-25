@@ -1,8 +1,8 @@
+use crate::constants::{MAX_NAME_LENGTH, MAX_SUBDOMAIN_DEPTH, MIN_NAME_LENGTH};
+use crate::types::Tld;
 use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use crate::constants::{MAX_NAME_LENGTH, MAX_SUBDOMAIN_DEPTH, MIN_NAME_LENGTH};
-use crate::types::Tld;
 use core::fmt;
 
 /// Structured errors for offline name validation.

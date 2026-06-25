@@ -3,11 +3,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::Write;
 
-pub fn build_forward_gmp_message(
-    name: &[u8],
-    destination_chain: &[u8],
-    resolver: &[u8],
-) -> String {
+pub fn build_forward_gmp_message(name: &[u8], destination_chain: &[u8], resolver: &[u8]) -> String {
     let mut buf = String::new();
     buf.push_str("{\"type\":\"xlm-ns-resolution\",\"name\":\"");
     push_utf8(&mut buf, name);
