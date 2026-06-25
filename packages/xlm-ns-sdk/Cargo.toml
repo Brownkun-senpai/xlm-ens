@@ -5,7 +5,7 @@ license.workspace = true
 version.workspace = true
 
 [dependencies]
-xlm-ns-common = { path = "../xlm-ns-common" }
+xlm-ns-common = { path = "../xlm-ns-common", features = ["std"] }
 stellar-rpc-client = "23.1.0"
 stellar-xdr = "23.0.0"
 soroban-sdk = "23.1.0"

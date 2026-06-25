@@ -1,3 +1,6 @@
+#![no_std]
+extern crate alloc;
+
 pub mod constants;
 pub mod errors;
 pub mod name_validation;
