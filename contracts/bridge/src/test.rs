@@ -1,6 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use soroban_sdk::{testutils::{Address as _, Events}, Address, Env, String};
+    use soroban_sdk::{
+        testutils::{Address as _, Events},
+        Address, Env, String,
+    };
 
     use crate::{BridgeContract, BridgeContractClient, BridgeError};
 

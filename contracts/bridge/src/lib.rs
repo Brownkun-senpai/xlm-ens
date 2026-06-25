@@ -244,7 +244,9 @@ impl BridgeContract {
             .set(&DataKey::SupportedChainIds, &updated);
 
         // Drop any cached route so removed chains cannot be resolved.
-        env.storage().persistent().remove(&DataKey::Route(chain_id.clone()));
+        env.storage()
+            .persistent()
+            .remove(&DataKey::Route(chain_id.clone()));
 
         SupportedChainRemoved { chain_id }.publish(&env);
 
